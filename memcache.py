@@ -666,21 +666,16 @@ class Client(local):
         notstored = [] # original keys.
 
         for server in server_keys.keys():
-            bigcmd = []
-            write = bigcmd.append
+            bigcmd = bytes()
             try:
                 for key in server_keys[server]: # These are mangled keys
                     store_info = self._val_to_store_info(
                             mapping[prefixed_to_orig_key[key]],
                             min_compress_len)
-                    if store_info:
-                        write(("set %s %d %d %d\r\n" % (key, store_info[0],
-                                time, store_info[1])).encode('utf-8'))
-                        write(store_info[2])
-                        write(b"\r\n")
-                    else:
-                        notstored.append(prefixed_to_orig_key[key])
-                server.send_cmds(b''.join(bigcmd))
+                    cmd = ("set %s %d %d %d\r\n" % (key, store_info[0], time, store_info[1])).encode('utf-8')
+                    cmd += store_info[2] if isinstance(store_info[2], bytes) else store_info[2].encode('utf-8')
+                    bigcmd += cmd + b"\r\n"
+                server.send_cmds(bigcmd)
             except socket.error as msg:
                 if isinstance(msg, tuple): msg = msg[1]
                 server.mark_dead(msg)
